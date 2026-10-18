@@ -116,6 +116,14 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--indigo);
 .stim p.np{position:relative;padding-left:32px}.stim p.np b.pn{position:absolute;left:0;top:2px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#F1EBDD;color:#79591A;font-family:var(--bd);font-size:.72rem}
 .stim .poem p{white-space:pre-line;font-family:var(--hd);font-style:italic;font-size:1.08rem}
 .stim figure{margin:12px 0}.stim figure svg,.stim figure img{width:100%;height:auto;display:block;border-radius:12px;background:#fff;border:1px solid var(--line)}
+figure.stim{overflow:hidden}figure.stim img,.stim img{display:block;width:100%;max-width:100%;height:auto;border-radius:12px;background:#fff;cursor:zoom-in}
+.zoomhint{display:inline-block;font-size:.74rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--indigo);margin-left:6px;opacity:.75}
+.lightbox{position:fixed;inset:0;z-index:300;background:rgba(9,13,30,.94);display:flex;flex-direction:column;animation:fbin .2s ease-out}
+.lightbox .btn{white-space:nowrap;flex:0 0 auto}.lightbox{background:rgba(9,13,30,.97)}
+.lightbox .lbbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;color:#fff;font-size:.9rem}
+.lightbox .lbimg{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px 16px 24px;touch-action:pinch-zoom pan-x pan-y}
+.lightbox img{max-width:100%;max-height:100%;background:#fff;border-radius:10px;cursor:zoom-in}
+.lightbox.big .lbimg{align-items:flex-start;justify-content:flex-start}.lightbox.big img{max-width:none;max-height:none;width:1200px;cursor:zoom-out}
 .stim figcaption{font-size:.86rem;margin-top:8px;color:var(--mute)}
 .qbox{background:#fff;border:1px solid var(--line);border-radius:22px;padding:22px 22px 18px;box-shadow:var(--sh1);position:relative}
 .qmeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -621,11 +629,16 @@ function bookBlock(b,B,st,revealAll){
   if(b.meta)h+=b.meta.map(m=>`<div class="small">${fmt(m)}</div>`).join('');
   h+=(b.paras||[]).map((p,i)=>b.numbered?`<p class="np"><b class="pn">${i+1}</b>${fmtn(p)}</p>`:`<p>${fmtn(p)}</p>`).join('')+`</div>`;return h}
  if(b.k==='poem')return `<div class="stim" style="position:static;max-height:none;margin:10px 0"><h3>${fmt(b.title||'')}</h3><div class="poem">${b.stanzas.map(s=>`<p>${s.map(l=>fmt(l)).join('<br>')}</p>`).join('')}</div></div>`;
- if(b.k==='fig')return `<figure class="stim" style="position:static;max-height:none;margin:10px 0;padding:10px"><img src="data:image/webp;base64,${B.figs[b.file]}" alt="${esc(b.alt||'')}" loading="lazy"><figcaption><b>${fmt(b.label||'')}</b> ${fmt(b.caption||'')}</figcaption></figure>`;
+ if(b.k==='fig')return `<figure class="stim" style="position:static;max-height:none;margin:10px 0;padding:10px"><img src="data:image/webp;base64,${B.figs[b.file]}" alt="${esc(b.alt||'')}" loading="lazy"><figcaption><b>${fmt(b.label||'')}</b> ${fmt(b.caption||'')}<span class="zoomhint">· Tap to enlarge</span></figcaption></figure>`;
  if(b.k==='table'){const r=b.rows;return `<div style="overflow:auto"><table class="t"><tr>${r[0].map(x=>`<th>${fmt(x)}</th>`).join('')}</tr>${r.slice(1).map(x=>`<tr>${x.map(y=>`<td>${fmt(y)}</td>`).join('')}</tr>`).join('')}</table></div>`}
  if(b.k==='q'){const sel=st.a[b.id],an=sel!==undefined,good=sel===b.key;
   return `<article class="qbox" data-q="${b.id}" style="margin:16px 0"><div class="qhead"><span class="qnum"><small>Question</small>${pad2(b.n)}</span><div class="qtags">${secChips(b.tags)}${lvlHTML(b.lvl)}</div></div><div class="stem">${stemHTML(b.stem)}</div>${b.opts.map((o,i)=>`<button class="opt ${an?(i===b.key?'ok':i===sel?'no':''):''}" data-q="${b.id}" data-i="${i}" ${an?'disabled':''}><span class="lt">${an&&i===b.key?'✓':an&&i===sel?'✕':'ABCD'[i]}</span><span>${fmt(o)}${an&&i===b.key?' <strong>Correct</strong>':an&&i===sel?' <strong>Your answer</strong>':''}</span></button>`).join('')}${an?`<div class="fb ${good?'good':'bad'}"><h4><span class="fbi">${good?'✓':'✕'}</span>${good?'Correct — well done':'Not quite. The answer is '+'ABCD'[b.key]+'.'}</h4><p style="margin:0">${fmt(b.ex)}</p>${revHTML(b.tags)}</div>`:''}</article>`}
  return ''}
+function zoomImg(im){const d=document.createElement('div');d.className='lightbox';d.setAttribute('role','dialog');d.setAttribute('aria-label','Enlarged figure');
+ d.innerHTML=`<div class="lbbar"><span>Tap image to zoom in</span><button class="btn sm ghost" type="button">Close ✕</button></div><div class="lbimg"><img src="${im.src}" alt="${esc(im.alt)}"></div>`;
+ const close=()=>{d.remove();document.removeEventListener('keydown',k)},k=e=>{if(e.key==='Escape')close()};
+ d.querySelector('button').onclick=close;d.querySelector('img').onclick=e=>{e.stopPropagation();d.classList.toggle('big')};d.querySelector('.lbimg').onclick=e=>{if(e.target===e.currentTarget)close()};
+ document.addEventListener('keydown',k);document.body.appendChild(d);d.querySelector('button').focus()}
 function openBook(id){const B=getBook(),t=B.tests.find(x=>x.id===id);if(!t){go('/library');return}const st=bstate(id);
  const pages=[{k:'cover'}].concat(t.sets.map(s=>({k:'set',s}))).concat([{k:'end'}]);const N=pages.length;
  const allq=t.sets.flatMap(s=>s.blocks.filter(b=>b.k==='q'));
@@ -642,6 +655,7 @@ function openBook(id){const B=getBook(),t=B.tests.find(x=>x.id===id);if(!t){go('
  <p class="ctr small mute">Swipe left or right · ← → keys</p>`;
  const bind=()=>{const pg=$('#pgc');
   $('#st')&&($('#st').onclick=()=>turn(1));
+  $$('figure.stim img',pg).forEach(im=>im.onclick=()=>zoomImg(im));
   $('#rst')&&($('#rst').onclick=()=>{if(confirm('Clear your answers for this book test?')){st.a={};st.p=0;save();cur=0;draw()}});
   $$('.opt',pg).forEach(b=>b.onclick=()=>{const q=allq.find(x=>x.id===b.dataset.q);st.a[q.id]=+b.dataset.i;save();const sc=pg.scrollTop;draw();pg.scrollTop=sc})};
  const draw=()=>{$('#pgc').innerHTML=content(cur);$('#pg').textContent=cur===0?'Cover':cur===N-1?'Results':`Page ${cur} of ${N-2}`;
